@@ -672,50 +672,97 @@ def get_status_for_day(
     car_id,
     day
 ):
+    """
+    Trạng thái theo ngày, ưu tiên khách mới nếu có khách mới thuê
+    trong cùng ngày; nếu không có khách mới thì ưu tiên "Đã trả".
+
+    Ví dụ:
+    - Khách A: 02/08 -> 03/08, trạng thái Đã trả
+      => ngày 03/08: Đã trả.
+    - Nếu ngày 03/08 có khách B bắt đầu thuê và đang thuê
+      => ngày 03/08: Đang thuê.
+    - Nếu khách thuê và trả trong chính ngày đó, trạng thái là Đã trả
+      khi đơn đó đã được nhập là "Đã trả".
+    """
 
     rentals = get_rentals()
 
     if rentals.empty:
+        return "Đang rảnh", 0, None
 
-        return (
-            "Đang rảnh",
-            0,
-            None
-        )
-
+    car_rentals = []
 
     for _, row in rentals.iterrows():
 
         if int(row["car_id"]) != int(car_id):
-
             continue
 
+        tu = parse_date(row["tu_ngay"])
+        den = parse_date(row["den_ngay"])
 
-        tu = parse_date(
-            row["tu_ngay"]
-        )
+        if tu <= day <= den:
+            car_rentals.append((tu, den, row))
 
-        den = parse_date(
-            row["den_ngay"]
-        )
+    if not car_rentals:
+        return "Đang rảnh", 0, None
 
+    # 1. Có khách mới bắt đầu trong ngày và đang thuê:
+    # xe tiếp tục được tính là đang thuê.
+    new_active = [
+        item for item in car_rentals
+        if item[0] == day
+        and item[2]["trang_thai"] == "Đang thuê"
+    ]
 
-        if (
-            tu <= day <= den
-        ):
+    if new_active:
+        item = new_active[-1]
+        return "Đang thuê", item[2]["tien_thue"], item[2]
 
-            return (
-                row["trang_thai"],
-                row["tien_thue"],
-                row
-            )
+    # 2. Nếu không có khách mới đang thuê, ưu tiên ĐÃ TRẢ.
+    # Bao gồm cả trường hợp thuê và trả trong cùng ngày.
+    returned_today = [
+        item for item in car_rentals
+        if item[2]["trang_thai"] == "Đã trả"
+        and item[1] == day
+    ]
 
+    if returned_today:
+        item = returned_today[-1]
+        return "Đã trả", item[2]["tien_thue"], item[2]
 
-    return (
-        "Đang rảnh",
-        0,
-        None
-    )
+    # 3. Đơn bắt đầu trong ngày nhưng đã trả ngay trong ngày.
+    returned_started_today = [
+        item for item in car_rentals
+        if item[0] == day
+        and item[2]["trang_thai"] == "Đã trả"
+    ]
+
+    if returned_started_today:
+        item = returned_started_today[-1]
+        return "Đã trả", item[2]["tien_thue"], item[2]
+
+    # 4. Đơn đang thuê bao phủ ngày.
+    active = [
+        item for item in car_rentals
+        if item[2]["trang_thai"] == "Đang thuê"
+    ]
+
+    if active:
+        item = active[-1]
+        return "Đang thuê", item[2]["tien_thue"], item[2]
+
+    # 5. Các trạng thái còn lại.
+    returned = [
+        item for item in car_rentals
+        if item[2]["trang_thai"] == "Đã trả"
+    ]
+
+    if returned:
+        item = returned[-1]
+        return "Đã trả", item[2]["tien_thue"], item[2]
+
+    return "Đang rảnh", 0, None
+
 
 
 # =========================================================
@@ -2124,59 +2171,186 @@ elif page == "💰 Doanh thu 12 tháng":
 
 
     # =====================================================
-    # DOANH THU THEO NGÀY
+    # DOANH THU THEO NGÀY - DẠNG LỊCH XE
     # =====================================================
 
     st.divider()
 
-
     st.header(
-        f"📅 Doanh thu theo ngày "
-        f"- Tháng {month}/{year}"
+        f"📅 Doanh thu theo ngày - Tháng {month}/{year}"
     )
 
+    cars = get_cars()
+    rentals = get_rentals()
+    expenses = get_expenses()
 
-    selected_first_day = date(
+    days_in_month = calendar.monthrange(
         year,
-        month,
-        1
+        month
+    )[1]
+
+    # -----------------------------------------------------
+    # BẢNG GIỐNG LỊCH XE:
+    # Mỗi hàng = 1 xe
+    # Mỗi cột = 1 ngày
+    # Cột cuối = tổng doanh thu của xe trong tháng
+    # -----------------------------------------------------
+
+    revenue_table = []
+
+    if not cars.empty:
+
+        for _, car in cars.iterrows():
+
+            row = {
+                "Xe":
+                    f"{car['bien_so']} - {car['ten_xe']}"
+            }
+
+            car_month_total = 0
+
+            for day in range(
+                1,
+                days_in_month + 1
+            ):
+
+                current_day = date(
+                    year,
+                    month,
+                    day
+                )
+
+                day_revenue = 0
+                day_expense = 0
+
+                if not rentals.empty:
+
+                    car_rentals = rentals[
+                        rentals["car_id"] == car["id"]
+                    ]
+
+                    for _, rental in car_rentals.iterrows():
+
+                        tu = parse_date(
+                            rental["tu_ngay"]
+                        )
+
+                        den = parse_date(
+                            rental["den_ngay"]
+                        )
+
+                        # Doanh thu chỉ ghi nhận ngày bắt đầu
+                        if tu == current_day:
+
+                            day_revenue += float(
+                                rental["tien_thue"]
+                            )
+
+                if not expenses.empty:
+
+                    car_expenses = expenses[
+                        expenses["car_id"] == car["id"]
+                    ]
+
+                    for _, expense in car_expenses.iterrows():
+
+                        expense_date = parse_date(
+                            expense["ngay"]
+                        )
+
+                        if expense_date == current_day:
+
+                            day_expense += float(
+                                expense["so_tien"]
+                            )
+
+                # Doanh thu trong ô ngày
+                # Chỉ hiển thị tiền nếu có phát sinh
+                if day_revenue > 0:
+
+                    row[
+                        str(day)
+                    ] = format_money(
+                        day_revenue
+                    )
+
+                else:
+
+                    row[
+                        str(day)
+                    ] = "-"
+
+                car_month_total += day_revenue
+
+            # -------------------------------------------------
+            # CỘT CUỐI: TỔNG DOANH THU CỦA XE
+            # -------------------------------------------------
+
+            row[
+                "Tổng"
+            ] = format_money(
+                car_month_total
+            )
+
+            revenue_table.append(
+                row
+            )
+
+    revenue_calendar_df = pd.DataFrame(
+        revenue_table
     )
 
-
-    selected_last_day = date(
-        year,
-        month,
-        calendar.monthrange(
-            year,
-            month
-        )[1]
+    st.subheader(
+        f"💰 Doanh thu từng xe theo ngày - Tháng {month}/{year}"
     )
 
+    if revenue_calendar_df.empty:
 
-    daily_data = []
+        st.info(
+            "Chưa có xe nào."
+        )
 
+    else:
 
-    current_day = (
-        selected_first_day
+        st.dataframe(
+            revenue_calendar_df,
+            use_container_width=True,
+            hide_index=True,
+            height=550
+        )
+
+    st.caption(
+        "💡 Mỗi ô là doanh thu phát sinh của xe trong ngày đó. "
+        "Cột **Tổng** là tổng doanh thu của từng xe trong tháng. "
+        "Doanh thu đơn thuê chỉ ghi nhận vào ngày bắt đầu thuê."
     )
 
+    # -----------------------------------------------------
+    # TỔNG DOANH THU THEO NGÀY - TẤT CẢ XE
+    # -----------------------------------------------------
 
-    while (
-        current_day
-        <=
-        selected_last_day
+    st.subheader(
+        f"📊 Tổng doanh thu tất cả xe theo ngày - Tháng {month}/{year}"
+    )
+
+    daily_total_row = {
+        "Ngày": "Tổng tất cả xe"
+    }
+
+    grand_total = 0
+
+    for day in range(
+        1,
+        days_in_month + 1
     ):
 
-        daily_revenue = 0
+        current_day = date(
+            year,
+            month,
+            day
+        )
 
-        daily_expense = 0
-
-        rented_cars = []
-
-
-        # =================================================
-        # ĐƠN THUÊ
-        # =================================================
+        total_day_revenue = 0
 
         if not rentals.empty:
 
@@ -2186,371 +2360,227 @@ elif page == "💰 Doanh thu 12 tháng":
                     rental["tu_ngay"]
                 )
 
-                den = parse_date(
-                    rental["den_ngay"]
-                )
-
-
-                # -----------------------------------------
-                # CHỈ TÍNH TIỀN Ở NGÀY BẮT ĐẦU
-                # -----------------------------------------
-
                 if tu == current_day:
 
-                    daily_revenue += float(
+                    total_day_revenue += float(
                         rental["tien_thue"]
                     )
 
+        grand_total += total_day_revenue
 
-                # -----------------------------------------
-                # CÁC NGÀY CÒN LẠI:
-                # CHỈ HIỂN THỊ TRẠNG THÁI
-                # -----------------------------------------
-
-                if (
-                    tu
-                    <=
-                    current_day
-                    <=
-                    den
-                ):
-
-                    rented_cars.append(
-
-                        f"{rental['bien_so']} - "
-                        f"{rental['ten_xe']}"
-
-                    )
-
-
-        # =================================================
-        # CHI PHÍ
-        # =================================================
-
-        if not expenses.empty:
-
-            for _, expense in expenses.iterrows():
-
-                expense_date = parse_date(
-                    expense["ngay"]
-                )
-
-
-                if (
-                    expense_date
-                    ==
-                    current_day
-                ):
-
-                    daily_expense += float(
-                        expense["so_tien"]
-                    )
-
-
-        # =================================================
-        # THỰC THU
-        # =================================================
-
-        daily_net = (
-            daily_revenue
-            -
-            daily_expense
+        daily_total_row[
+            "Ngày " + str(day)
+        ] = (
+            format_money(
+                total_day_revenue
+            )
+            if total_day_revenue > 0
+            else "-"
         )
 
+    daily_total_row[
+        "Tổng tháng"
+    ] = format_money(
+        grand_total
+    )
 
-        # =================================================
-        # TRẠNG THÁI
-        # =================================================
+    daily_total_df = pd.DataFrame(
+        [daily_total_row]
+    )
 
-        if rented_cars:
+    st.dataframe(
+        daily_total_df,
+        use_container_width=True,
+        hide_index=True
+    )
 
-            status_text = (
-                "🟠 Đang thuê: "
-                +
-                ", ".join(
-                    rented_cars
+    # -----------------------------------------------------
+    # KPI THÁNG
+    # -----------------------------------------------------
+
+    total_expense_month = 0
+
+    if not expenses.empty:
+
+        for _, expense in expenses.iterrows():
+
+            expense_date = parse_date(
+                expense["ngay"]
+            )
+
+            if (
+                expense_date.year == year
+                and
+                expense_date.month == month
+            ):
+
+                total_expense_month += float(
+                    expense["so_tien"]
                 )
+
+    net_month = (
+        grand_total
+        -
+        total_expense_month
+    )
+
+    k1, k2, k3 = st.columns(3)
+
+    k1.metric(
+        "💰 Tổng doanh thu tháng",
+        format_money(
+            grand_total
+        )
+    )
+
+    k2.metric(
+        "🔧 Chi phí tháng",
+        format_money(
+            total_expense_month
+        )
+    )
+
+    k3.metric(
+        "💵 Doanh thu thực tế",
+        format_money(
+            net_month
+        )
+    )
+
+    # -----------------------------------------------------
+    # BẢNG CHI TIẾT ĐƠN THUÊ BÊN DƯỚI
+    # -----------------------------------------------------
+
+    st.subheader(
+        "📋 Chi tiết đơn thuê phát sinh trong tháng"
+    )
+
+    if not rentals.empty:
+
+        month_rentals = rentals.copy()
+
+        month_rentals[
+            "_tu"
+        ] = pd.to_datetime(
+            month_rentals[
+                "tu_ngay"
+            ]
+        )
+
+        month_rentals = month_rentals[
+            (
+                month_rentals["_tu"].dt.year == year
+            )
+            &
+            (
+                month_rentals["_tu"].dt.month == month
+            )
+        ]
+
+        if month_rentals.empty:
+
+            st.info(
+                "Không có đơn thuê phát sinh trong tháng."
             )
 
         else:
 
-            status_text = (
-                "🟢 Không có xe đang thuê"
+            detail_df = month_rentals[
+                [
+                    "bien_so",
+                    "ten_xe",
+                    "tu_ngay",
+                    "den_ngay",
+                    "trang_thai",
+                    "tien_thue"
+                ]
+            ].copy()
+
+            detail_df = detail_df.rename(
+                columns={
+                    "bien_so": "Biển số",
+                    "ten_xe": "Tên xe",
+                    "tu_ngay": "Từ ngày",
+                    "den_ngay": "Đến ngày",
+                    "trang_thai": "Trạng thái",
+                    "tien_thue": "Doanh thu"
+                }
             )
 
+            detail_df[
+                "Doanh thu"
+            ] = detail_df[
+                "Doanh thu"
+            ].apply(
+                format_money
+            )
 
-        # =================================================
-        # LƯU
-        # =================================================
-
-        daily_data.append({
-
-            "Ngày":
-                current_day.strftime(
-                    "%d/%m/%Y"
-                ),
-
-            "Thứ":
-                current_day.strftime(
-                    "%A"
-                ),
-
-            "Trạng thái":
-                status_text,
-
-            "Doanh thu":
-                daily_revenue,
-
-            "Chi phí":
-                daily_expense,
-
-            "Thực thu":
-                daily_net
-        })
-
-
-        current_day += timedelta(
-            days=1
-        )
-
-
-    daily_df = pd.DataFrame(
-        daily_data
-    )
-
+            st.dataframe(
+                detail_df,
+                use_container_width=True,
+                hide_index=True
+            )
 
     # =====================================================
-    # THỨ TIẾNG VIỆT
-    # =====================================================
-
-    weekday_map = {
-
-        "Monday":
-            "Thứ 2",
-
-        "Tuesday":
-            "Thứ 3",
-
-        "Wednesday":
-            "Thứ 4",
-
-        "Thursday":
-            "Thứ 5",
-
-        "Friday":
-            "Thứ 6",
-
-        "Saturday":
-            "Thứ 7",
-
-        "Sunday":
-            "Chủ nhật"
-    }
-
-
-    daily_df["Thứ"] = (
-        daily_df[
-            "Thứ"
-        ]
-        .map(
-            weekday_map
-        )
-    )
-
-
-    # =====================================================
-    # TỔNG THÁNG
-    # =====================================================
-
-    month_revenue = (
-        daily_df[
-            "Doanh thu"
-        ]
-        .sum()
-    )
-
-
-    month_expense = (
-        daily_df[
-            "Chi phí"
-        ]
-        .sum()
-    )
-
-
-    month_net = (
-        daily_df[
-            "Thực thu"
-        ]
-        .sum()
-    )
-
-
-    # =====================================================
-    # KPI THÁNG
-    # =====================================================
-
-    m1, m2, m3 = st.columns(
-        3
-    )
-
-
-    m1.metric(
-        "💰 Doanh thu tháng",
-        format_money(
-            month_revenue
-        )
-    )
-
-
-    m2.metric(
-        "🔧 Chi phí tháng",
-        format_money(
-            month_expense
-        )
-    )
-
-
-    m3.metric(
-        "💵 Thực thu tháng",
-        format_money(
-            month_net
-        )
-    )
-
-
-    st.divider()
-
-
-    # =====================================================
-    # BẢNG TỪNG NGÀY
+    # BIỂU ĐỒ DOANH THU THEO NGÀY
     # =====================================================
 
     st.subheader(
-        f"📋 Chi tiết từng ngày "
-        f"- Tháng {month}/{year}"
+        "📈 Biểu đồ tổng doanh thu theo ngày"
     )
 
+    chart_rows = []
 
-    display_daily = (
-        daily_df.copy()
-    )
+    for day in range(
+        1,
+        days_in_month + 1
+    ):
 
-
-    # -----------------------------------------------------
-    # DOANH THU
-    # -----------------------------------------------------
-
-    display_daily[
-        "Doanh thu"
-    ] = (
-        display_daily[
-            "Doanh thu"
-        ]
-        .apply(
-
-            lambda x:
-                format_money(x)
-                if x > 0
-                else "-"
+        current_day = date(
+            year,
+            month,
+            day
         )
-    )
 
+        total_day_revenue = 0
 
-    # -----------------------------------------------------
-    # CHI PHÍ
-    # -----------------------------------------------------
+        if not rentals.empty:
 
-    display_daily[
-        "Chi phí"
-    ] = (
-        display_daily[
-            "Chi phí"
-        ]
-        .apply(
+            for _, rental in rentals.iterrows():
 
-            lambda x:
-                format_money(x)
-                if x > 0
-                else "-"
+                tu = parse_date(
+                    rental["tu_ngay"]
+                )
+
+                if tu == current_day:
+
+                    total_day_revenue += float(
+                        rental["tien_thue"]
+                    )
+
+        chart_rows.append(
+            {
+                "Ngày":
+                    current_day,
+                "Doanh thu":
+                    total_day_revenue
+            }
         )
+
+    chart_df = pd.DataFrame(
+        chart_rows
     )
 
+    if not chart_df.empty:
 
-    # -----------------------------------------------------
-    # THỰC THU
-    # -----------------------------------------------------
-
-    display_daily[
-        "Thực thu"
-    ] = (
-        display_daily[
-            "Thực thu"
-        ]
-        .apply(
-
-            lambda x:
-                format_money(x)
-                if x != 0
-                else "-"
-        )
-    )
-
-
-    st.dataframe(
-        display_daily[
-            [
-                "Ngày",
-                "Thứ",
-                "Trạng thái",
-                "Doanh thu",
-                "Chi phí",
-                "Thực thu"
-            ]
-        ],
-        use_container_width=True,
-        hide_index=True,
-        height=600
-    )
-
-
-    # =====================================================
-    # BIỂU ĐỒ THEO NGÀY
-    # =====================================================
-
-    st.subheader(
-        "📈 Biểu đồ theo ngày"
-    )
-
-
-    daily_chart = (
-        daily_df.copy()
-    )
-
-
-    daily_chart["Ngày"] = (
-        pd.to_datetime(
-            daily_chart[
-                "Ngày"
-            ],
-            format="%d/%m/%Y"
-        )
-    )
-
-
-    daily_chart = (
-        daily_chart.set_index(
+        chart_df = chart_df.set_index(
             "Ngày"
         )
-    )
 
-
-    st.line_chart(
-        daily_chart[
-            [
-                "Doanh thu",
-                "Chi phí",
-                "Thực thu"
+        st.line_chart(
+            chart_df[
+                "Doanh thu"
             ]
-        ]
-    )
+        )
+
+
