@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import streamlit as st
 import sqlite3
 import pandas as pd
@@ -21,7 +23,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-
 DB_FILE = "quan_ly_xe.db"
 
 
@@ -31,7 +32,7 @@ DB_FILE = "quan_ly_xe.db"
 
 ADMIN_PASSWORD = "Phung02101997"
 
-# Tài khoản được phép truy cập website.
+# Tài khoản được phép truy cập website
 USERS = {
     "admin": ADMIN_PASSWORD,
     "nhanvien": "123456",
@@ -83,9 +84,7 @@ if "security_action" not in st.session_state:
 if "last_security_action" not in st.session_state:
     st.session_state.last_security_action = None
 
-
 if "current_page" not in st.session_state:
-
     st.session_state.current_page = None
 
 
@@ -112,13 +111,9 @@ st.markdown(
        ----------------------------------------- */
 
     div[data-testid="stMetric"] {
-
         background-color: rgba(128,128,128,0.08);
-
         padding: 14px;
-
         border-radius: 10px;
-
         border: 1px solid rgba(128,128,128,0.12);
     }
 
@@ -128,9 +123,7 @@ st.markdown(
        ----------------------------------------- */
 
     .stButton button {
-
         border-radius: 8px;
-
         font-weight: 500;
     }
 
@@ -140,7 +133,6 @@ st.markdown(
        ----------------------------------------- */
 
     div[data-testid="stDataFrame"] {
-
         border-radius: 8px;
     }
 
@@ -150,7 +142,6 @@ st.markdown(
        ----------------------------------------- */
 
     section[data-testid="stSidebar"] {
-
         transition:
             width 0.25s ease,
             min-width 0.25s ease;
@@ -167,34 +158,72 @@ st.markdown(
 # =========================================================
 
 def require_admin(action_name):
+
     st.session_state.security_action = action_name
     st.rerun()
 
 
 def security_dialog():
+
     action = st.session_state.get("security_action")
+
     if not action:
         return True
 
-    st.warning(f"🔐 Thao tác **{action}** yêu cầu mật khẩu Admin.")
+    st.warning(
+        f"🔐 Thao tác **{action}** yêu cầu mật khẩu Admin."
+    )
+
     with st.form("security_confirm_form"):
-        password = st.text_input("Mật khẩu Admin", type="password")
+
+        password = st.text_input(
+            "Mật khẩu Admin",
+            type="password"
+        )
+
         c1, c2 = st.columns(2)
+
         with c1:
-            ok = st.form_submit_button("🔓 Xác nhận", type="primary", use_container_width=True)
+
+            ok = st.form_submit_button(
+                "🔓 Xác nhận",
+                type="primary",
+                use_container_width=True
+            )
+
         with c2:
-            cancel = st.form_submit_button("Hủy", use_container_width=True)
+
+            cancel = st.form_submit_button(
+                "Hủy",
+                use_container_width=True
+            )
+
         if cancel:
+
             st.session_state.security_action = None
+            st.session_state.pending_car = None
+            st.session_state.pending_delete_car = None
+            st.session_state.pending_delete_rental = None
+            st.session_state.pending_delete_expense = None
+
             st.rerun()
+
         if ok:
+
             if password == ADMIN_PASSWORD:
+
                 st.session_state.last_security_action = action
                 st.session_state.security_action = None
                 st.session_state.admin_logged_in = True
+
                 st.rerun()
+
             else:
-                st.error("❌ Mật khẩu Admin không đúng.")
+
+                st.error(
+                    "❌ Mật khẩu Admin không đúng."
+                )
+
     return False
 
 
@@ -220,9 +249,7 @@ def get_db():
 def init_db():
 
     conn = get_db()
-
     cur = conn.cursor()
-
 
     # =====================================================
     # BẢNG XE
@@ -242,7 +269,6 @@ def init_db():
         )
         """
     )
-
 
     # =====================================================
     # BẢNG ĐƠN THUÊ
@@ -272,7 +298,6 @@ def init_db():
         """
     )
 
-
     # =====================================================
     # BẢNG CHI PHÍ
     # =====================================================
@@ -299,9 +324,7 @@ def init_db():
         """
     )
 
-
     conn.commit()
-
     conn.close()
 
 
@@ -315,17 +338,13 @@ init_db()
 def format_money(value):
 
     try:
-
         value = float(value)
 
-    except:
-
+    except Exception:
         value = 0
 
     return f"{value:,.0f} đ"
 
-
-# =========================================================
 
 def parse_date(value):
 
@@ -335,15 +354,12 @@ def parse_date(value):
     ).date()
 
 
-# =========================================================
-
 def number_of_days(
     start_date,
     end_date
 ):
 
     if end_date < start_date:
-
         return 0
 
     return (
@@ -373,8 +389,6 @@ def get_cars():
 
     return df
 
-
-# =========================================================
 
 def add_car(
     bien_so,
@@ -420,13 +434,10 @@ def add_car(
     return result
 
 
-# =========================================================
-
 def delete_car(car_id):
 
     conn = get_db()
 
-    # Xóa đơn thuê
     conn.execute(
         """
         DELETE FROM rentals
@@ -435,7 +446,6 @@ def delete_car(car_id):
         (car_id,)
     )
 
-    # Xóa chi phí
     conn.execute(
         """
         DELETE FROM expenses
@@ -444,7 +454,6 @@ def delete_car(car_id):
         (car_id,)
     )
 
-    # Xóa xe
     conn.execute(
         """
         DELETE FROM cars
@@ -454,7 +463,6 @@ def delete_car(car_id):
     )
 
     conn.commit()
-
     conn.close()
 
 
@@ -504,8 +512,6 @@ def get_rentals():
     return df
 
 
-# =========================================================
-
 def rental_has_conflict(
     car_id,
     tu_ngay,
@@ -515,16 +521,12 @@ def rental_has_conflict(
     rentals = get_rentals()
 
     if rentals.empty:
-
         return False
-
 
     for _, row in rentals.iterrows():
 
         if int(row["car_id"]) != int(car_id):
-
             continue
-
 
         old_start = parse_date(
             row["tu_ngay"]
@@ -534,8 +536,6 @@ def rental_has_conflict(
             row["den_ngay"]
         )
 
-
-        # Có giao nhau
         if (
             tu_ngay <= old_end
             and
@@ -544,11 +544,8 @@ def rental_has_conflict(
 
             return True
 
-
     return False
 
-
-# =========================================================
 
 def add_rental(
     car_id,
@@ -587,11 +584,8 @@ def add_rental(
     )
 
     conn.commit()
-
     conn.close()
 
-
-# =========================================================
 
 def delete_rental(
     rental_id
@@ -608,7 +602,6 @@ def delete_rental(
     )
 
     conn.commit()
-
     conn.close()
 
 
@@ -656,8 +649,6 @@ def get_expenses():
     return df
 
 
-# =========================================================
-
 def add_expense(
     car_id,
     ngay,
@@ -692,11 +683,8 @@ def add_expense(
     )
 
     conn.commit()
-
     conn.close()
 
-
-# =========================================================
 
 def delete_expense(
     expense_id
@@ -713,7 +701,6 @@ def delete_expense(
     )
 
     conn.commit()
-
     conn.close()
 
 
@@ -725,22 +712,11 @@ def get_status_for_day(
     car_id,
     day
 ):
-    """
-    Trạng thái theo ngày, ưu tiên khách mới nếu có khách mới thuê
-    trong cùng ngày; nếu không có khách mới thì ưu tiên "Đã trả".
-
-    Ví dụ:
-    - Khách A: 02/08 -> 03/08, trạng thái Đã trả
-      => ngày 03/08: Đã trả.
-    - Nếu ngày 03/08 có khách B bắt đầu thuê và đang thuê
-      => ngày 03/08: Đang thuê.
-    - Nếu khách thuê và trả trong chính ngày đó, trạng thái là Đã trả
-      khi đơn đó đã được nhập là "Đã trả".
-    """
 
     rentals = get_rentals()
 
     if rentals.empty:
+
         return "Đang rảnh", 0, None
 
     car_rentals = []
@@ -750,72 +726,155 @@ def get_status_for_day(
         if int(row["car_id"]) != int(car_id):
             continue
 
-        tu = parse_date(row["tu_ngay"])
-        den = parse_date(row["den_ngay"])
+        tu = parse_date(
+            row["tu_ngay"]
+        )
+
+        den = parse_date(
+            row["den_ngay"]
+        )
 
         if tu <= day <= den:
-            car_rentals.append((tu, den, row))
+
+            car_rentals.append(
+                (
+                    tu,
+                    den,
+                    row
+                )
+            )
 
     if not car_rentals:
+
         return "Đang rảnh", 0, None
 
-    # 1. Có khách mới bắt đầu trong ngày và đang thuê:
-    # xe tiếp tục được tính là đang thuê.
+    # =====================================================
+    # 1. KHÁCH MỚI BẮT ĐẦU TRONG NGÀY
+    # =====================================================
+
     new_active = [
-        item for item in car_rentals
+
+        item
+
+        for item in car_rentals
+
         if item[0] == day
+
         and item[2]["trang_thai"] == "Đang thuê"
+
     ]
 
     if new_active:
-        item = new_active[-1]
-        return "Đang thuê", item[2]["tien_thue"], item[2]
 
-    # 2. Nếu không có khách mới đang thuê, ưu tiên ĐÃ TRẢ.
-    # Bao gồm cả trường hợp thuê và trả trong cùng ngày.
+        item = new_active[-1]
+
+        return (
+            "Đang thuê",
+            item[2]["tien_thue"],
+            item[2]
+        )
+
+    # =====================================================
+    # 2. ƯU TIÊN ĐÃ TRẢ TRONG NGÀY
+    # =====================================================
+
     returned_today = [
-        item for item in car_rentals
+
+        item
+
+        for item in car_rentals
+
         if item[2]["trang_thai"] == "Đã trả"
+
         and item[1] == day
+
     ]
 
     if returned_today:
-        item = returned_today[-1]
-        return "Đã trả", item[2]["tien_thue"], item[2]
 
-    # 3. Đơn bắt đầu trong ngày nhưng đã trả ngay trong ngày.
+        item = returned_today[-1]
+
+        return (
+            "Đã trả",
+            item[2]["tien_thue"],
+            item[2]
+        )
+
+    # =====================================================
+    # 3. THUÊ VÀ TRẢ NGAY TRONG NGÀY
+    # =====================================================
+
     returned_started_today = [
-        item for item in car_rentals
+
+        item
+
+        for item in car_rentals
+
         if item[0] == day
+
         and item[2]["trang_thai"] == "Đã trả"
+
     ]
 
     if returned_started_today:
-        item = returned_started_today[-1]
-        return "Đã trả", item[2]["tien_thue"], item[2]
 
-    # 4. Đơn đang thuê bao phủ ngày.
+        item = returned_started_today[-1]
+
+        return (
+            "Đã trả",
+            item[2]["tien_thue"],
+            item[2]
+        )
+
+    # =====================================================
+    # 4. ĐƠN ĐANG THUÊ BAO PHỦ NGÀY
+    # =====================================================
+
     active = [
-        item for item in car_rentals
+
+        item
+
+        for item in car_rentals
+
         if item[2]["trang_thai"] == "Đang thuê"
+
     ]
 
     if active:
-        item = active[-1]
-        return "Đang thuê", item[2]["tien_thue"], item[2]
 
-    # 5. Các trạng thái còn lại.
+        item = active[-1]
+
+        return (
+            "Đang thuê",
+            item[2]["tien_thue"],
+            item[2]
+        )
+
+    # =====================================================
+    # 5. CÁC TRẠNG THÁI CÒN LẠI
+    # =====================================================
+
     returned = [
-        item for item in car_rentals
+
+        item
+
+        for item in car_rentals
+
         if item[2]["trang_thai"] == "Đã trả"
+
     ]
 
     if returned:
+
         item = returned[-1]
-        return "Đã trả", item[2]["tien_thue"], item[2]
+
+        return (
+            "Đã trả",
+            item[2]["tien_thue"],
+            item[2]
+        )
 
     return "Đang rảnh", 0, None
-
 
 
 # =========================================================
@@ -823,46 +882,146 @@ def get_status_for_day(
 # =========================================================
 
 if not st.session_state.website_logged_in:
-    st.title("🔐 Quản lý xe cho thuê")
-    st.subheader("Đăng nhập hệ thống")
-    with st.form("website_login_form"):
-        username = st.text_input("Tên đăng nhập")
-        password = st.text_input("Mật khẩu", type="password")
-        login = st.form_submit_button("🔓 Đăng nhập", type="primary", use_container_width=True)
+
+    st.title(
+        "🔐 Quản lý xe cho thuê"
+    )
+
+    st.subheader(
+        "Đăng nhập hệ thống"
+    )
+
+    with st.form(
+        "website_login_form"
+    ):
+
+        username = st.text_input(
+            "Tên đăng nhập"
+        )
+
+        password = st.text_input(
+            "Mật khẩu",
+            type="password"
+        )
+
+        login = st.form_submit_button(
+            "🔓 Đăng nhập",
+            type="primary",
+            use_container_width=True
+        )
+
         if login:
-            if username in USERS and USERS[username] == password:
+
+            if (
+                username in USERS
+                and
+                USERS[username] == password
+            ):
+
                 st.session_state.website_logged_in = True
+
                 st.session_state.current_user = username
-                st.session_state.admin_logged_in = username == "admin"
+
+                st.session_state.admin_logged_in = (
+                    username == "admin"
+                )
+
                 st.rerun()
+
             else:
-                st.error("❌ Tài khoản hoặc mật khẩu không đúng.")
-    st.info("🔒 Chỉ tài khoản được cấp quyền mới có thể truy cập hệ thống.")
+
+                st.error(
+                    "❌ Tài khoản hoặc mật khẩu không đúng."
+                )
+
+    st.info(
+        "🔒 Chỉ tài khoản được cấp quyền mới có thể truy cập hệ thống."
+    )
+
     st.stop()
+
 
 # =========================================================
 # SIDEBAR
 # =========================================================
 
-st.sidebar.title("🛵 QUẢN LÝ XE")
-st.sidebar.success(f"👤 {st.session_state.current_user}")
-if st.sidebar.button("🚪 Đăng xuất", key="website_logout"):
+st.sidebar.title(
+    "🛵 QUẢN LÝ XE"
+)
+
+if st.session_state.current_user == "admin":
+
+    st.sidebar.success(
+        "👑 Admin"
+    )
+
+else:
+
+    st.sidebar.success(
+        "👤 Nhân viên"
+    )
+
+
+# =========================================================
+# ĐĂNG XUẤT
+# =========================================================
+
+if st.sidebar.button(
+    "🚪 Đăng xuất",
+    key="website_logout"
+):
+
     st.session_state.website_logged_in = False
     st.session_state.current_user = None
     st.session_state.admin_logged_in = False
     st.session_state.security_action = None
     st.session_state.last_security_action = None
+
     st.rerun()
+
+
+# =========================================================
+# PHÂN QUYỀN MENU
+# =========================================================
+
+if st.session_state.current_user == "admin":
+
+    menu_items = [
+
+        "📅 Lịch xe",
+
+        "🛵 Quản lý xe",
+
+        "📋 Đơn thuê",
+
+        "🔧 Chi phí / Khấu hao",
+
+        "💰 Doanh thu 12 tháng"
+
+    ]
+
+else:
+
+    # =====================================================
+    # NHÂN VIÊN KHÔNG ĐƯỢC XEM DOANH THU
+    # =====================================================
+
+    menu_items = [
+
+        "📅 Lịch xe",
+
+        "🛵 Quản lý xe",
+
+        "📋 Đơn thuê",
+
+        "🔧 Chi phí / Khấu hao"
+
+    ]
+
 
 page = st.sidebar.radio(
     "Chức năng",
-    [
-        "📅 Lịch xe",
-        "🛵 Quản lý xe",
-        "📋 Đơn thuê",
-        "🔧 Chi phí / Khấu hao",
-        "💰 Doanh thu 12 tháng"
-    ]
+    menu_items
 )
 
 
@@ -875,28 +1034,30 @@ st.session_state.current_page = page
 
 st.sidebar.divider()
 
+current_year = date.today().year
 
-year = st.sidebar.selectbox(
-    "Năm",
+year_list = list(
     range(
         2024,
         2031
-    ),
-    index=(
-        list(
-            range(
-                2024,
-                2031
-            )
-        ).index(
-            min(
-                max(
-                    date.today().year,
-                    2024
-                ),
-                2030
-            )
-        )
+    )
+)
+
+if current_year < 2024:
+    default_year = 2024
+
+elif current_year > 2030:
+    default_year = 2030
+
+else:
+    default_year = current_year
+
+
+year = st.sidebar.selectbox(
+    "Năm",
+    year_list,
+    index=year_list.index(
+        default_year
     )
 )
 
@@ -920,11 +1081,13 @@ month = st.sidebar.selectbox(
 # =========================================================
 
 if page in [
+
     "📅 Lịch xe",
+
     "🛵 Quản lý xe"
+
 ]:
 
-    # Dùng CSS/JS nhẹ để đóng sidebar
     st.markdown(
         """
         <script>
@@ -939,6 +1102,7 @@ if page in [
 
             sidebar.style.width = "0px";
             sidebar.style.minWidth = "0px";
+
         }
 
         </script>
@@ -953,27 +1117,76 @@ if page in [
 
 if page == "🛵 Quản lý xe":
 
-    st.title("🛵 Quản lý xe")
+    st.title(
+        "🛵 Quản lý xe"
+    )
 
     if not security_dialog():
         st.stop()
 
-    action = st.session_state.pop("last_security_action", None)
+    action = st.session_state.pop(
+        "last_security_action",
+        None
+    )
+
+    # =====================================================
+    # THÊM XE SAU KHI XÁC NHẬN ADMIN
+    # =====================================================
 
     if action == "thêm xe":
-        pending = st.session_state.pop("pending_car", None)
-        if pending:
-            if add_car(pending["bien_so"], pending["ten_xe"], pending["gia_ngay"]):
-                st.success(f"✅ Đã thêm xe {pending['bien_so']} thành công!")
-                st.rerun()
-            else:
-                st.error("❌ Biển số này đã tồn tại.")
 
-    elif action and action.startswith("xóa xe "):
-        pending = st.session_state.pop("pending_delete_car", None)
+        pending = st.session_state.pop(
+            "pending_car",
+            None
+        )
+
         if pending:
-            delete_car(pending["id"])
-            st.success(f"✅ Đã xóa xe {pending['bien_so']}.")
+
+            if add_car(
+                pending["bien_so"],
+                pending["ten_xe"],
+                pending["gia_ngay"]
+            ):
+
+                st.success(
+                    f"✅ Đã thêm xe "
+                    f"{pending['bien_so']} thành công!"
+                )
+
+                st.rerun()
+
+            else:
+
+                st.error(
+                    "❌ Biển số này đã tồn tại."
+                )
+
+    # =====================================================
+    # XÓA XE SAU KHI XÁC NHẬN ADMIN
+    # =====================================================
+
+    elif (
+        action
+        and
+        action.startswith("xóa xe ")
+    ):
+
+        pending = st.session_state.pop(
+            "pending_delete_car",
+            None
+        )
+
+        if pending:
+
+            delete_car(
+                pending["id"]
+            )
+
+            st.success(
+                f"✅ Đã xóa xe "
+                f"{pending['bien_so']}."
+            )
+
             st.rerun()
 
     st.divider()
@@ -986,11 +1199,9 @@ if page == "🛵 Quản lý xe":
         "➕ Thêm xe"
     )
 
-
     col1, col2, col3 = st.columns(
         3
     )
-
 
     with col1:
 
@@ -999,14 +1210,12 @@ if page == "🛵 Quản lý xe":
             placeholder="29A1-12345"
         )
 
-
     with col2:
 
         ten_xe = st.text_input(
             "Tên xe",
             placeholder="Honda SH 160"
         )
-
 
     with col3:
 
@@ -1017,7 +1226,6 @@ if page == "🛵 Quản lý xe":
             step=50000
         )
 
-
     if st.button(
         "➕ Thêm xe",
         type="primary",
@@ -1025,19 +1233,34 @@ if page == "🛵 Quản lý xe":
     ):
 
         if not bien_so.strip():
-            st.error("❌ Vui lòng nhập biển số.")
+
+            st.error(
+                "❌ Vui lòng nhập biển số."
+            )
+
         elif not ten_xe.strip():
-            st.error("❌ Vui lòng nhập tên xe.")
+
+            st.error(
+                "❌ Vui lòng nhập tên xe."
+            )
+
         else:
+
             st.session_state.pending_car = {
+
                 "bien_so": bien_so,
+
                 "ten_xe": ten_xe,
+
                 "gia_ngay": gia_ngay
+
             }
-            require_admin("thêm xe")
+
+            require_admin(
+                "thêm xe"
+            )
 
     st.divider()
-
 
     # =====================================================
     # DANH SÁCH XE
@@ -1047,9 +1270,7 @@ if page == "🛵 Quản lý xe":
         "🚘 Danh sách xe"
     )
 
-
     cars = get_cars()
-
 
     if cars.empty:
 
@@ -1070,13 +1291,11 @@ if page == "🛵 Quản lý xe":
                 ]
             )
 
-
             with c1:
 
                 st.write(
                     f"**{car['bien_so']}**"
                 )
-
 
             with c2:
 
@@ -1084,13 +1303,11 @@ if page == "🛵 Quản lý xe":
                     car["ten_xe"]
                 )
 
-
             with c3:
 
                 st.write(
                     f"{format_money(car['gia_ngay'])}/ngày"
                 )
-
 
             with c4:
 
@@ -1098,11 +1315,20 @@ if page == "🛵 Quản lý xe":
                     "🗑️ Xóa",
                     key=f"delete_car_{car['id']}"
                 ):
+
                     st.session_state.pending_delete_car = {
-                        "id": int(car["id"]),
-                        "bien_so": str(car["bien_so"])
+
+                        "id":
+                            int(car["id"]),
+
+                        "bien_so":
+                            str(car["bien_so"])
+
                     }
-                    require_admin(f"xóa xe {car['bien_so']}")
+
+                    require_admin(
+                        f"xóa xe {car['bien_so']}"
+                    )
 
 
 # =========================================================
@@ -1118,17 +1344,35 @@ elif page == "📋 Đơn thuê":
     if not security_dialog():
         st.stop()
 
-    action = st.session_state.pop("last_security_action", None)
-    if action and action.startswith("xóa đơn #"):
-        pending_id = st.session_state.pop("pending_delete_rental", None)
+    action = st.session_state.pop(
+        "last_security_action",
+        None
+    )
+
+    if (
+        action
+        and
+        action.startswith("xóa đơn #")
+    ):
+
+        pending_id = st.session_state.pop(
+            "pending_delete_rental",
+            None
+        )
+
         if pending_id is not None:
-            delete_rental(pending_id)
-            st.success(f"✅ Đã xóa đơn #{pending_id}.")
+
+            delete_rental(
+                pending_id
+            )
+
+            st.success(
+                f"✅ Đã xóa đơn #{pending_id}."
+            )
+
             st.rerun()
 
-
     cars = get_cars()
-
 
     # =====================================================
     # TẠO ĐƠN
@@ -1147,15 +1391,14 @@ elif page == "📋 Đơn thuê":
             "➕ Tạo đơn thuê"
         )
 
-
         car_options = {
 
             f"{row['bien_so']} - {row['ten_xe']}":
                 row["id"]
 
             for _, row in cars.iterrows()
-        }
 
+        }
 
         selected_car = st.selectbox(
             "Chọn xe",
@@ -1164,21 +1407,17 @@ elif page == "📋 Đơn thuê":
             )
         )
 
-
         car_id = car_options[
             selected_car
         ]
-
 
         car_info = cars[
             cars["id"] == car_id
         ].iloc[0]
 
-
         col1, col2 = st.columns(
             2
         )
-
 
         with col1:
 
@@ -1187,7 +1426,6 @@ elif page == "📋 Đơn thuê":
                 value=date.today()
             )
 
-
         with col2:
 
             den_ngay = st.date_input(
@@ -1195,32 +1433,29 @@ elif page == "📋 Đơn thuê":
                 value=date.today()
             )
 
-
         trang_thai = st.selectbox(
             "Trạng thái",
             STATUS
         )
-
 
         so_ngay = number_of_days(
             tu_ngay,
             den_ngay
         )
 
-
         st.info(
             f"📅 Số ngày thuê: **{so_ngay} ngày**"
         )
 
-
         tien_mac_dinh = (
+
             so_ngay
             *
             float(
                 car_info["gia_ngay"]
             )
-        )
 
+        )
 
         tien_thue = st.number_input(
             "Tổng tiền thuê",
@@ -1231,12 +1466,10 @@ elif page == "📋 Đơn thuê":
             step=50000
         )
 
-
         st.caption(
             "💡 Doanh thu sẽ được ghi nhận "
             "toàn bộ vào ngày bắt đầu thuê."
         )
-
 
         ghi_chu = st.text_area(
             "Ghi chú",
@@ -1245,7 +1478,6 @@ elif page == "📋 Đơn thuê":
                 "tiền cọc..."
             )
         )
-
 
         if st.button(
             "💾 Lưu đơn thuê",
@@ -1258,7 +1490,6 @@ elif page == "📋 Đơn thuê":
                 st.error(
                     "❌ Ngày kết thúc không được nhỏ hơn ngày bắt đầu."
                 )
-
 
             elif rental_has_conflict(
                 car_id,
@@ -1275,13 +1506,11 @@ elif page == "📋 Đơn thuê":
                     "hoặc chọn xe khác."
                 )
 
-
             elif tien_thue <= 0:
 
                 st.error(
                     "❌ Tổng tiền thuê phải lớn hơn 0."
                 )
-
 
             else:
 
@@ -1298,23 +1527,18 @@ elif page == "📋 Đơn thuê":
                     ghi_chu
                 )
 
-
                 st.success(
                     "✅ Đã lưu đơn thuê thành công!"
                 )
-
 
                 st.toast(
                     "Đã thêm đơn thuê",
                     icon="✅"
                 )
 
-
                 st.rerun()
 
-
     st.divider()
-
 
     # =====================================================
     # DANH SÁCH ĐƠN
@@ -1324,9 +1548,7 @@ elif page == "📋 Đơn thuê":
         "📋 Danh sách đơn"
     )
 
-
     rentals = get_rentals()
-
 
     if rentals.empty:
 
@@ -1338,7 +1560,6 @@ elif page == "📋 Đơn thuê":
 
         show_df = rentals.copy()
 
-
         show_df["tien_thue"] = (
             show_df[
                 "tien_thue"
@@ -1347,7 +1568,6 @@ elif page == "📋 Đơn thuê":
                 format_money
             )
         )
-
 
         show_df = show_df.rename(
             columns={
@@ -1372,9 +1592,9 @@ elif page == "📋 Đơn thuê":
 
                 "ghi_chu":
                     "Ghi chú"
+
             }
         )
-
 
         st.dataframe(
             show_df[
@@ -1392,11 +1612,9 @@ elif page == "📋 Đơn thuê":
             hide_index=True
         )
 
-
         st.subheader(
             "🗑️ Xóa đơn"
         )
-
 
         rental_id = st.selectbox(
             "Chọn đơn cần xóa",
@@ -1405,13 +1623,18 @@ elif page == "📋 Đơn thuê":
                 f"Đơn #{x}"
         )
 
-
         if st.button(
             "🗑️ Xóa đơn",
             key="delete_rental"
         ):
-            st.session_state.pending_delete_rental = int(rental_id)
-            require_admin(f"xóa đơn #{rental_id}")
+
+            st.session_state.pending_delete_rental = int(
+                rental_id
+            )
+
+            require_admin(
+                f"xóa đơn #{rental_id}"
+            )
 
 
 # =========================================================
@@ -1427,22 +1650,39 @@ elif page == "🔧 Chi phí / Khấu hao":
     if not security_dialog():
         st.stop()
 
-    action = st.session_state.pop("last_security_action", None)
-    if action and action.startswith("xóa chi phí #"):
-        pending_id = st.session_state.pop("pending_delete_expense", None)
-        if pending_id is not None:
-            delete_expense(pending_id)
-            st.success(f"✅ Đã xóa chi phí #{pending_id}.")
-            st.rerun()
+    action = st.session_state.pop(
+        "last_security_action",
+        None
+    )
 
+    if (
+        action
+        and
+        action.startswith("xóa chi phí #")
+    ):
+
+        pending_id = st.session_state.pop(
+            "pending_delete_expense",
+            None
+        )
+
+        if pending_id is not None:
+
+            delete_expense(
+                pending_id
+            )
+
+            st.success(
+                f"✅ Đã xóa chi phí #{pending_id}."
+            )
+
+            st.rerun()
 
     st.caption(
         "Chi phí được ghi nhận vào đúng ngày phát sinh."
     )
 
-
     cars = get_cars()
-
 
     if cars.empty:
 
@@ -1456,13 +1696,12 @@ elif page == "🔧 Chi phí / Khấu hao":
             "➕ Thêm chi phí"
         )
 
-
         car_options = {
 
             "🌐 Chi phí chung":
                 None
-        }
 
+        }
 
         car_options.update({
 
@@ -1470,8 +1709,8 @@ elif page == "🔧 Chi phí / Khấu hao":
                 row["id"]
 
             for _, row in cars.iterrows()
-        })
 
+        })
 
         selected_car = st.selectbox(
             "Xe",
@@ -1480,16 +1719,13 @@ elif page == "🔧 Chi phí / Khấu hao":
             )
         )
 
-
         car_id = car_options[
             selected_car
         ]
 
-
         col1, col2 = st.columns(
             2
         )
-
 
         with col1:
 
@@ -1498,14 +1734,12 @@ elif page == "🔧 Chi phí / Khấu hao":
                 value=date.today()
             )
 
-
         with col2:
 
             loai_chi_phi = st.selectbox(
                 "Loại chi phí",
                 EXPENSE_TYPES
             )
-
 
         so_tien = st.number_input(
             "Số tiền",
@@ -1514,7 +1748,6 @@ elif page == "🔧 Chi phí / Khấu hao":
             step=50000
         )
 
-
         ghi_chu = st.text_area(
             "Ghi chú",
             placeholder=(
@@ -1522,7 +1755,6 @@ elif page == "🔧 Chi phí / Khấu hao":
                 "sửa phanh, thay lốp..."
             )
         )
-
 
         if st.button(
             "💾 Lưu chi phí",
@@ -1548,23 +1780,18 @@ elif page == "🔧 Chi phí / Khấu hao":
                     ghi_chu
                 )
 
-
                 st.success(
                     "✅ Đã lưu chi phí thành công!"
                 )
-
 
                 st.toast(
                     "Đã thêm chi phí",
                     icon="🔧"
                 )
 
-
                 st.rerun()
 
-
     st.divider()
-
 
     # =====================================================
     # DANH SÁCH CHI PHÍ
@@ -1574,9 +1801,7 @@ elif page == "🔧 Chi phí / Khấu hao":
         "📋 Danh sách chi phí"
     )
 
-
     expenses = get_expenses()
-
 
     if expenses.empty:
 
@@ -1588,7 +1813,6 @@ elif page == "🔧 Chi phí / Khấu hao":
 
         show_expenses = expenses.copy()
 
-
         show_expenses["Xe"] = (
             show_expenses[
                 "bien_so"
@@ -1598,7 +1822,6 @@ elif page == "🔧 Chi phí / Khấu hao":
             )
         )
 
-
         show_expenses["Số tiền"] = (
             show_expenses[
                 "so_tien"
@@ -1607,7 +1830,6 @@ elif page == "🔧 Chi phí / Khấu hao":
                 format_money
             )
         )
-
 
         show_expenses = show_expenses.rename(
             columns={
@@ -1620,9 +1842,9 @@ elif page == "🔧 Chi phí / Khấu hao":
 
                 "ghi_chu":
                     "Ghi chú"
+
             }
         )
-
 
         st.dataframe(
             show_expenses[
@@ -1638,14 +1860,12 @@ elif page == "🔧 Chi phí / Khấu hao":
             hide_index=True
         )
 
-
         total_expenses = (
             expenses[
                 "so_tien"
             ]
             .sum()
         )
-
 
         st.metric(
             "💸 Tổng chi phí",
@@ -1654,11 +1874,9 @@ elif page == "🔧 Chi phí / Khấu hao":
             )
         )
 
-
         st.subheader(
             "🗑️ Xóa chi phí"
         )
-
 
         expense_id = st.selectbox(
             "Chọn khoản chi phí",
@@ -1667,13 +1885,18 @@ elif page == "🔧 Chi phí / Khấu hao":
                 f"Chi phí #{x}"
         )
 
-
         if st.button(
             "🗑️ Xóa chi phí",
             key="delete_expense"
         ):
-            st.session_state.pending_delete_expense = int(expense_id)
-            require_admin(f"xóa chi phí #{expense_id}")
+
+            st.session_state.pending_delete_expense = int(
+                expense_id
+            )
+
+            require_admin(
+                f"xóa chi phí #{expense_id}"
+            )
 
 
 # =========================================================
@@ -1686,14 +1909,11 @@ elif page == "📅 Lịch xe":
         "📅 Lịch xe"
     )
 
-
     st.subheader(
         f"Tháng {month}/{year}"
     )
 
-
     cars = get_cars()
-
 
     if cars.empty:
 
@@ -1708,9 +1928,7 @@ elif page == "📅 Lịch xe":
             month
         )[1]
 
-
         table = []
-
 
         for _, car in cars.iterrows():
 
@@ -1719,8 +1937,8 @@ elif page == "📅 Lịch xe":
                 "Xe":
                     f"{car['bien_so']} - "
                     f"{car['ten_xe']}"
-            }
 
+            }
 
             for day in range(
                 1,
@@ -1733,14 +1951,12 @@ elif page == "📅 Lịch xe":
                     day
                 )
 
-
                 status, _, _ = (
                     get_status_for_day(
                         car["id"],
                         current_day
                     )
                 )
-
 
                 if status == "Đang thuê":
 
@@ -1754,21 +1970,17 @@ elif page == "📅 Lịch xe":
 
                     text = "🟢 Rảnh"
 
-
                 row[
                     str(day)
                 ] = text
-
 
             table.append(
                 row
             )
 
-
         df = pd.DataFrame(
             table
         )
-
 
         st.dataframe(
             df,
@@ -1776,7 +1988,6 @@ elif page == "📅 Lịch xe":
             hide_index=True,
             height=550
         )
-
 
         st.markdown(
             """
@@ -1795,20 +2006,28 @@ elif page == "📅 Lịch xe":
 
 elif page == "💰 Doanh thu 12 tháng":
 
+    # =====================================================
+    # CHỐT QUYỀN
+    # =====================================================
+
+    if st.session_state.current_user != "admin":
+
+        st.error(
+            "🔒 Bạn không có quyền xem mục Doanh thu."
+        )
+
+        st.stop()
+
     st.title(
         "💰 Doanh thu"
     )
-
 
     rentals = get_rentals()
 
     expenses = get_expenses()
 
-
     # =====================================================
     # DOANH THU 12 THÁNG
-    #
-    # QUY TẮC:
     #
     # Đơn 01/08 -> 05/08
     # Tổng tiền 2.500.000
@@ -1816,12 +2035,10 @@ elif page == "💰 Doanh thu 12 tháng":
     # 01/08 = +2.500.000
     #
     # 02/08 -> 05/08
-    # Không cộng thêm doanh thu
+    # Không cộng thêm
     # =====================================================
 
-
     monthly_data = []
-
 
     for m in range(
         1,
@@ -1833,7 +2050,6 @@ elif page == "💰 Doanh thu 12 tháng":
         total_expense = 0
 
         rental_days = 0
-
 
         # =================================================
         # DOANH THU
@@ -1852,11 +2068,6 @@ elif page == "💰 Doanh thu 12 tháng":
                     rental["den_ngay"]
                 )
 
-
-                # -----------------------------------------
-                # CHỈ TÍNH VÀO THÁNG CỦA NGÀY BẮT ĐẦU
-                # -----------------------------------------
-
                 if (
                     tu.year == year
                     and
@@ -1867,11 +2078,9 @@ elif page == "💰 Doanh thu 12 tháng":
                         rental["tien_thue"]
                     )
 
-
                     rental_days += (
                         den - tu
                     ).days + 1
-
 
         # =================================================
         # CHI PHÍ
@@ -1885,19 +2094,15 @@ elif page == "💰 Doanh thu 12 tháng":
                     expense["ngay"]
                 )
 
-
                 if (
-                    expense_date.year
-                    == year
+                    expense_date.year == year
                     and
-                    expense_date.month
-                    == m
+                    expense_date.month == m
                 ):
 
                     total_expense += float(
                         expense["so_tien"]
                     )
-
 
         # =================================================
         # THỰC THU
@@ -1908,7 +2113,6 @@ elif page == "💰 Doanh thu 12 tháng":
             -
             total_expense
         )
-
 
         monthly_data.append({
 
@@ -1926,13 +2130,12 @@ elif page == "💰 Doanh thu 12 tháng":
 
             "Doanh thu thực tế":
                 net_revenue
-        })
 
+        })
 
     revenue_df = pd.DataFrame(
         monthly_data
     )
-
 
     # =====================================================
     # TỔNG NĂM
@@ -1945,14 +2148,12 @@ elif page == "💰 Doanh thu 12 tháng":
         .sum()
     )
 
-
     total_expense_year = (
         revenue_df[
             "Chi phí / Khấu hao"
         ]
         .sum()
     )
-
 
     net_year = (
         revenue_df[
@@ -1961,14 +2162,12 @@ elif page == "💰 Doanh thu 12 tháng":
         .sum()
     )
 
-
     total_days = (
         revenue_df[
             "Số ngày thuê"
         ]
         .sum()
     )
-
 
     # =====================================================
     # KPI
@@ -1978,14 +2177,12 @@ elif page == "💰 Doanh thu 12 tháng":
         4
     )
 
-
     c1.metric(
         f"💰 Doanh thu {year}",
         format_money(
             total_year
         )
     )
-
 
     c2.metric(
         "🔧 Chi phí / Khấu hao",
@@ -1994,7 +2191,6 @@ elif page == "💰 Doanh thu 12 tháng":
         )
     )
 
-
     c3.metric(
         "💵 Doanh thu thực tế",
         format_money(
@@ -2002,15 +2198,12 @@ elif page == "💰 Doanh thu 12 tháng":
         )
     )
 
-
     c4.metric(
         "📅 Tổng ngày thuê",
         f"{total_days:,.0f} ngày"
     )
 
-
     st.divider()
-
 
     # =====================================================
     # BẢNG 12 THÁNG
@@ -2020,9 +2213,7 @@ elif page == "💰 Doanh thu 12 tháng":
         f"📋 Tổng hợp doanh thu năm {year}"
     )
 
-
     display_df = revenue_df.copy()
-
 
     for col in [
 
@@ -2031,6 +2222,7 @@ elif page == "💰 Doanh thu 12 tháng":
         "Chi phí / Khấu hao",
 
         "Doanh thu thực tế"
+
     ]:
 
         display_df[col] = (
@@ -2040,13 +2232,11 @@ elif page == "💰 Doanh thu 12 tháng":
             )
         )
 
-
     st.dataframe(
         display_df,
         use_container_width=True,
         hide_index=True
     )
-
 
     # =====================================================
     # BIỂU ĐỒ DOANH THU THỰC TẾ
@@ -2056,21 +2246,17 @@ elif page == "💰 Doanh thu 12 tháng":
         f"📊 Doanh thu thực tế năm {year}"
     )
 
-
     chart_df = revenue_df.copy()
-
 
     chart_df = chart_df.set_index(
         "Tháng"
     )
-
 
     st.bar_chart(
         chart_df[
             "Doanh thu thực tế"
         ]
     )
-
 
     # =====================================================
     # SO SÁNH DOANH THU / CHI PHÍ
@@ -2080,7 +2266,6 @@ elif page == "💰 Doanh thu 12 tháng":
         "📊 Doanh thu và chi phí"
     )
 
-
     compare_df = revenue_df[
         [
             "Doanh thu",
@@ -2088,19 +2273,17 @@ elif page == "💰 Doanh thu 12 tháng":
         ]
     ].copy()
 
-
     compare_df.index = revenue_df[
         "Tháng"
     ]
-
 
     st.bar_chart(
         compare_df
     )
 
-
     # =====================================================
-    # DOANH THU THEO NGÀY - DẠNG LỊCH XE
+    # DOANH THU THEO NGÀY
+    # DẠNG LỊCH XE
     # =====================================================
 
     st.divider()
@@ -2110,7 +2293,9 @@ elif page == "💰 Doanh thu 12 tháng":
     )
 
     cars = get_cars()
+
     rentals = get_rentals()
+
     expenses = get_expenses()
 
     days_in_month = calendar.monthrange(
@@ -2118,12 +2303,9 @@ elif page == "💰 Doanh thu 12 tháng":
         month
     )[1]
 
-    # -----------------------------------------------------
-    # BẢNG GIỐNG LỊCH XE:
-    # Mỗi hàng = 1 xe
-    # Mỗi cột = 1 ngày
-    # Cột cuối = tổng doanh thu của xe trong tháng
-    # -----------------------------------------------------
+    # =====================================================
+    # BẢNG DOANH THU TỪNG XE
+    # =====================================================
 
     revenue_table = []
 
@@ -2132,8 +2314,11 @@ elif page == "💰 Doanh thu 12 tháng":
         for _, car in cars.iterrows():
 
             row = {
+
                 "Xe":
-                    f"{car['bien_so']} - {car['ten_xe']}"
+                    f"{car['bien_so']} - "
+                    f"{car['ten_xe']}"
+
             }
 
             car_month_total = 0
@@ -2150,7 +2335,6 @@ elif page == "💰 Doanh thu 12 tháng":
                 )
 
                 day_revenue = 0
-                day_expense = 0
 
                 if not rentals.empty:
 
@@ -2164,37 +2348,12 @@ elif page == "💰 Doanh thu 12 tháng":
                             rental["tu_ngay"]
                         )
 
-                        den = parse_date(
-                            rental["den_ngay"]
-                        )
-
-                        # Doanh thu chỉ ghi nhận ngày bắt đầu
                         if tu == current_day:
 
                             day_revenue += float(
                                 rental["tien_thue"]
                             )
 
-                if not expenses.empty:
-
-                    car_expenses = expenses[
-                        expenses["car_id"] == car["id"]
-                    ]
-
-                    for _, expense in car_expenses.iterrows():
-
-                        expense_date = parse_date(
-                            expense["ngay"]
-                        )
-
-                        if expense_date == current_day:
-
-                            day_expense += float(
-                                expense["so_tien"]
-                            )
-
-                # Doanh thu trong ô ngày
-                # Chỉ hiển thị tiền nếu có phát sinh
                 if day_revenue > 0:
 
                     row[
@@ -2210,10 +2369,6 @@ elif page == "💰 Doanh thu 12 tháng":
                     ] = "-"
 
                 car_month_total += day_revenue
-
-            # -------------------------------------------------
-            # CỘT CUỐI: TỔNG DOANH THU CỦA XE
-            # -------------------------------------------------
 
             row[
                 "Tổng"
@@ -2254,16 +2409,19 @@ elif page == "💰 Doanh thu 12 tháng":
         "Doanh thu đơn thuê chỉ ghi nhận vào ngày bắt đầu thuê."
     )
 
-    # -----------------------------------------------------
-    # TỔNG DOANH THU THEO NGÀY - TẤT CẢ XE
-    # -----------------------------------------------------
+    # =====================================================
+    # TỔNG DOANH THU THEO NGÀY
+    # =====================================================
 
     st.subheader(
         f"📊 Tổng doanh thu tất cả xe theo ngày - Tháng {month}/{year}"
     )
 
     daily_total_row = {
-        "Ngày": "Tổng tất cả xe"
+
+        "Ngày":
+            "Tổng tất cả xe"
+
     }
 
     grand_total = 0
@@ -2300,11 +2458,15 @@ elif page == "💰 Doanh thu 12 tháng":
         daily_total_row[
             "Ngày " + str(day)
         ] = (
+
             format_money(
                 total_day_revenue
             )
+
             if total_day_revenue > 0
+
             else "-"
+
         )
 
     daily_total_row[
@@ -2314,7 +2476,9 @@ elif page == "💰 Doanh thu 12 tháng":
     )
 
     daily_total_df = pd.DataFrame(
-        [daily_total_row]
+        [
+            daily_total_row
+        ]
     )
 
     st.dataframe(
@@ -2323,9 +2487,9 @@ elif page == "💰 Doanh thu 12 tháng":
         hide_index=True
     )
 
-    # -----------------------------------------------------
+    # =====================================================
     # KPI THÁNG
-    # -----------------------------------------------------
+    # =====================================================
 
     total_expense_month = 0
 
@@ -2353,7 +2517,9 @@ elif page == "💰 Doanh thu 12 tháng":
         total_expense_month
     )
 
-    k1, k2, k3 = st.columns(3)
+    k1, k2, k3 = st.columns(
+        3
+    )
 
     k1.metric(
         "💰 Tổng doanh thu tháng",
@@ -2376,9 +2542,9 @@ elif page == "💰 Doanh thu 12 tháng":
         )
     )
 
-    # -----------------------------------------------------
-    # BẢNG CHI TIẾT ĐƠN THUÊ BÊN DƯỚI
-    # -----------------------------------------------------
+    # =====================================================
+    # CHI TIẾT ĐƠN THUÊ
+    # =====================================================
 
     st.subheader(
         "📋 Chi tiết đơn thuê phát sinh trong tháng"
@@ -2398,11 +2564,15 @@ elif page == "💰 Doanh thu 12 tháng":
 
         month_rentals = month_rentals[
             (
-                month_rentals["_tu"].dt.year == year
+                month_rentals[
+                    "_tu"
+                ].dt.year == year
             )
             &
             (
-                month_rentals["_tu"].dt.month == month
+                month_rentals[
+                    "_tu"
+                ].dt.month == month
             )
         ]
 
@@ -2427,12 +2597,25 @@ elif page == "💰 Doanh thu 12 tháng":
 
             detail_df = detail_df.rename(
                 columns={
-                    "bien_so": "Biển số",
-                    "ten_xe": "Tên xe",
-                    "tu_ngay": "Từ ngày",
-                    "den_ngay": "Đến ngày",
-                    "trang_thai": "Trạng thái",
-                    "tien_thue": "Doanh thu"
+
+                    "bien_so":
+                        "Biển số",
+
+                    "ten_xe":
+                        "Tên xe",
+
+                    "tu_ngay":
+                        "Từ ngày",
+
+                    "den_ngay":
+                        "Đến ngày",
+
+                    "trang_thai":
+                        "Trạng thái",
+
+                    "tien_thue":
+                        "Doanh thu"
+
                 }
             )
 
@@ -2489,10 +2672,13 @@ elif page == "💰 Doanh thu 12 tháng":
 
         chart_rows.append(
             {
+
                 "Ngày":
                     current_day,
+
                 "Doanh thu":
                     total_day_revenue
+
             }
         )
 
@@ -2513,3 +2699,18 @@ elif page == "💰 Doanh thu 12 tháng":
         )
 
 
+# =========================================================
+# KIỂM TRA CUỐI - NHÂN VIÊN KHÔNG THỂ VÀO DOANH THU
+# =========================================================
+
+if (
+    st.session_state.current_user != "admin"
+    and
+    st.session_state.current_page == "💰 Doanh thu 12 tháng"
+):
+
+    st.error(
+        "🔒 Tài khoản nhân viên không có quyền truy cập doanh thu."
+    )
+
+    st.stop()
