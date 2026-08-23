@@ -31,6 +31,12 @@ DB_FILE = "quan_ly_xe.db"
 
 ADMIN_PASSWORD = "Phung02101997"
 
+# Tài khoản được phép truy cập website.
+USERS = {
+    "admin": ADMIN_PASSWORD,
+    "nhanvien": "123456",
+}
+
 
 # =========================================================
 # TRẠNG THÁI
@@ -62,9 +68,20 @@ EXPENSE_TYPES = [
 # SESSION STATE
 # =========================================================
 
-if "admin_logged_in" not in st.session_state:
+if "website_logged_in" not in st.session_state:
+    st.session_state.website_logged_in = False
 
+if "current_user" not in st.session_state:
+    st.session_state.current_user = None
+
+if "admin_logged_in" not in st.session_state:
     st.session_state.admin_logged_in = False
+
+if "security_action" not in st.session_state:
+    st.session_state.security_action = None
+
+if "last_security_action" not in st.session_state:
+    st.session_state.last_security_action = None
 
 
 if "current_page" not in st.session_state:
@@ -143,6 +160,42 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+
+# =========================================================
+# BẢO MẬT
+# =========================================================
+
+def require_admin(action_name):
+    st.session_state.security_action = action_name
+    st.rerun()
+
+
+def security_dialog():
+    action = st.session_state.get("security_action")
+    if not action:
+        return True
+
+    st.warning(f"🔐 Thao tác **{action}** yêu cầu mật khẩu Admin.")
+    with st.form("security_confirm_form"):
+        password = st.text_input("Mật khẩu Admin", type="password")
+        c1, c2 = st.columns(2)
+        with c1:
+            ok = st.form_submit_button("🔓 Xác nhận", type="primary", use_container_width=True)
+        with c2:
+            cancel = st.form_submit_button("Hủy", use_container_width=True)
+        if cancel:
+            st.session_state.security_action = None
+            st.rerun()
+        if ok:
+            if password == ADMIN_PASSWORD:
+                st.session_state.last_security_action = action
+                st.session_state.security_action = None
+                st.session_state.admin_logged_in = True
+                st.rerun()
+            else:
+                st.error("❌ Mật khẩu Admin không đúng.")
+    return False
 
 
 # =========================================================
@@ -766,13 +819,40 @@ def get_status_for_day(
 
 
 # =========================================================
+# ĐĂNG NHẬP WEBSITE
+# =========================================================
+
+if not st.session_state.website_logged_in:
+    st.title("🔐 Quản lý xe cho thuê")
+    st.subheader("Đăng nhập hệ thống")
+    with st.form("website_login_form"):
+        username = st.text_input("Tên đăng nhập")
+        password = st.text_input("Mật khẩu", type="password")
+        login = st.form_submit_button("🔓 Đăng nhập", type="primary", use_container_width=True)
+        if login:
+            if username in USERS and USERS[username] == password:
+                st.session_state.website_logged_in = True
+                st.session_state.current_user = username
+                st.session_state.admin_logged_in = username == "admin"
+                st.rerun()
+            else:
+                st.error("❌ Tài khoản hoặc mật khẩu không đúng.")
+    st.info("🔒 Chỉ tài khoản được cấp quyền mới có thể truy cập hệ thống.")
+    st.stop()
+
+# =========================================================
 # SIDEBAR
 # =========================================================
 
-st.sidebar.title(
-    "🛵 QUẢN LÝ XE"
-)
-
+st.sidebar.title("🛵 QUẢN LÝ XE")
+st.sidebar.success(f"👤 {st.session_state.current_user}")
+if st.sidebar.button("🚪 Đăng xuất", key="website_logout"):
+    st.session_state.website_logged_in = False
+    st.session_state.current_user = None
+    st.session_state.admin_logged_in = False
+    st.session_state.security_action = None
+    st.session_state.last_security_action = None
+    st.rerun()
 
 page = st.sidebar.radio(
     "Chức năng",
@@ -784,26 +864,6 @@ page = st.sidebar.radio(
         "💰 Doanh thu 12 tháng"
     ]
 )
-
-
-# =========================================================
-# TỰ ĐỘNG ĐĂNG XUẤT ADMIN KHI RỜI QUẢN LÝ XE
-# =========================================================
-
-if (
-    st.session_state.current_page
-    is not None
-    and
-    st.session_state.current_page
-    != page
-):
-
-    if (
-        st.session_state.current_page
-        == "🛵 Quản lý xe"
-    ):
-
-        st.session_state.admin_logged_in = False
 
 
 st.session_state.current_page = page
@@ -893,112 +953,30 @@ if page in [
 
 if page == "🛵 Quản lý xe":
 
-    st.title(
-        "🛵 Quản lý xe"
-    )
+    st.title("🛵 Quản lý xe")
 
-
-    # =====================================================
-    # CHƯA ĐĂNG NHẬP
-    # =====================================================
-
-    if not st.session_state.admin_logged_in:
-
-        st.warning(
-            "🔐 Trang này yêu cầu quyền Admin."
-        )
-
-
-        st.subheader(
-            "🔑 Đăng nhập Admin"
-        )
-
-
-        with st.form(
-            "admin_login"
-        ):
-
-            password = st.text_input(
-                "Mật khẩu Admin",
-                type="password"
-            )
-
-
-            login_button = st.form_submit_button(
-                "🔐 Đăng nhập",
-                type="primary"
-            )
-
-
-            if login_button:
-
-                if password == ADMIN_PASSWORD:
-
-                    st.session_state.admin_logged_in = True
-
-
-                    st.success(
-                        "✅ Đăng nhập Admin thành công!"
-                    )
-
-
-                    st.toast(
-                        "Admin đã đăng nhập",
-                        icon="🔐"
-                    )
-
-
-                    st.rerun()
-
-                else:
-
-                    st.error(
-                        "❌ Mật khẩu không đúng."
-                    )
-
-
-        st.info(
-            "Khi rời khỏi trang Quản lý xe, "
-            "quyền Admin sẽ tự động đăng xuất."
-        )
-
-
+    if not security_dialog():
         st.stop()
 
+    action = st.session_state.pop("last_security_action", None)
 
-    # =====================================================
-    # ADMIN ĐÃ ĐĂNG NHẬP
-    # =====================================================
+    if action == "thêm xe":
+        pending = st.session_state.pop("pending_car", None)
+        if pending:
+            if add_car(pending["bien_so"], pending["ten_xe"], pending["gia_ngay"]):
+                st.success(f"✅ Đã thêm xe {pending['bien_so']} thành công!")
+                st.rerun()
+            else:
+                st.error("❌ Biển số này đã tồn tại.")
 
-    col_admin1, col_admin2 = st.columns(
-        [5, 1]
-    )
-
-
-    with col_admin1:
-
-        st.success(
-            "🔐 Đang đăng nhập với quyền ADMIN"
-        )
-
-
-    with col_admin2:
-
-        if st.button(
-            "🚪 Thoát Admin"
-        ):
-
-            st.session_state.admin_logged_in = False
-
-            st.success(
-                "Đã đăng xuất Admin."
-            )
-
+    elif action and action.startswith("xóa xe "):
+        pending = st.session_state.pop("pending_delete_car", None)
+        if pending:
+            delete_car(pending["id"])
+            st.success(f"✅ Đã xóa xe {pending['bien_so']}.")
             st.rerun()
 
-
     st.divider()
-
 
     # =====================================================
     # THÊM XE
@@ -1047,45 +1025,16 @@ if page == "🛵 Quản lý xe":
     ):
 
         if not bien_so.strip():
-
-            st.error(
-                "❌ Vui lòng nhập biển số."
-            )
-
+            st.error("❌ Vui lòng nhập biển số.")
         elif not ten_xe.strip():
-
-            st.error(
-                "❌ Vui lòng nhập tên xe."
-            )
-
+            st.error("❌ Vui lòng nhập tên xe.")
         else:
-
-            ok = add_car(
-                bien_so,
-                ten_xe,
-                gia_ngay
-            )
-
-
-            if ok:
-
-                st.success(
-                    f"✅ Đã thêm xe {bien_so} thành công!"
-                )
-
-                st.toast(
-                    f"Đã thêm xe {bien_so}",
-                    icon="🛵"
-                )
-
-                st.rerun()
-
-            else:
-
-                st.error(
-                    "❌ Biển số này đã tồn tại."
-                )
-
+            st.session_state.pending_car = {
+                "bien_so": bien_so,
+                "ten_xe": ten_xe,
+                "gia_ngay": gia_ngay
+            }
+            require_admin("thêm xe")
 
     st.divider()
 
@@ -1149,21 +1098,11 @@ if page == "🛵 Quản lý xe":
                     "🗑️ Xóa",
                     key=f"delete_car_{car['id']}"
                 ):
-
-                    delete_car(
-                        car["id"]
-                    )
-
-                    st.success(
-                        f"✅ Đã xóa xe {car['bien_so']}."
-                    )
-
-                    st.toast(
-                        "Đã xóa xe",
-                        icon="🗑️"
-                    )
-
-                    st.rerun()
+                    st.session_state.pending_delete_car = {
+                        "id": int(car["id"]),
+                        "bien_so": str(car["bien_so"])
+                    }
+                    require_admin(f"xóa xe {car['bien_so']}")
 
 
 # =========================================================
@@ -1175,6 +1114,17 @@ elif page == "📋 Đơn thuê":
     st.title(
         "📋 Quản lý đơn thuê"
     )
+
+    if not security_dialog():
+        st.stop()
+
+    action = st.session_state.pop("last_security_action", None)
+    if action and action.startswith("xóa đơn #"):
+        pending_id = st.session_state.pop("pending_delete_rental", None)
+        if pending_id is not None:
+            delete_rental(pending_id)
+            st.success(f"✅ Đã xóa đơn #{pending_id}.")
+            st.rerun()
 
 
     cars = get_cars()
@@ -1460,24 +1410,8 @@ elif page == "📋 Đơn thuê":
             "🗑️ Xóa đơn",
             key="delete_rental"
         ):
-
-            delete_rental(
-                rental_id
-            )
-
-
-            st.success(
-                f"✅ Đã xóa đơn #{rental_id}."
-            )
-
-
-            st.toast(
-                "Đã xóa đơn thuê",
-                icon="🗑️"
-            )
-
-
-            st.rerun()
+            st.session_state.pending_delete_rental = int(rental_id)
+            require_admin(f"xóa đơn #{rental_id}")
 
 
 # =========================================================
@@ -1489,6 +1423,17 @@ elif page == "🔧 Chi phí / Khấu hao":
     st.title(
         "🔧 Chi phí / Khấu hao"
     )
+
+    if not security_dialog():
+        st.stop()
+
+    action = st.session_state.pop("last_security_action", None)
+    if action and action.startswith("xóa chi phí #"):
+        pending_id = st.session_state.pop("pending_delete_expense", None)
+        if pending_id is not None:
+            delete_expense(pending_id)
+            st.success(f"✅ Đã xóa chi phí #{pending_id}.")
+            st.rerun()
 
 
     st.caption(
@@ -1727,24 +1672,8 @@ elif page == "🔧 Chi phí / Khấu hao":
             "🗑️ Xóa chi phí",
             key="delete_expense"
         ):
-
-            delete_expense(
-                expense_id
-            )
-
-
-            st.success(
-                f"✅ Đã xóa chi phí #{expense_id}."
-            )
-
-
-            st.toast(
-                "Đã xóa chi phí",
-                icon="🗑️"
-            )
-
-
-            st.rerun()
+            st.session_state.pending_delete_expense = int(expense_id)
+            require_admin(f"xóa chi phí #{expense_id}")
 
 
 # =========================================================
